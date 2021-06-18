@@ -2,15 +2,41 @@ import tensorflow as tf
 from tqdm import tqdm
 
 def create_model():
-	model = tf.keras.applications.MobileNetV2(include_top=False, weights='imagenet', input_tensor=None, input_shape=[96, 96, 3], pooling=None, classes=6)
-	for i in range(len(model.layers)):
-		model.layers[i].trainable = False
-	output_layer = tf.keras.layers.Flatten()(model.output)
-	output_layer = tf.keras.layers.Dense(6, activation="softmax")(output_layer)
-	return tf.keras.Model(inputs=model.input, outputs=output_layer)
+	input_layer = tf.keras.layers.Input((96, 96, 1))
+	intermediate_layer = tf.keras.layers.Conv2D(filters=64, kernel_size=(5,5), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_1')(input_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_1')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=64, kernel_size=(5,5), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_2')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_2')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.MaxPooling2D(pool_size=(2,2), name='maxpool2d_1')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dropout(0.4, name='dropout_1')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_3')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_3')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_4')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_4')(intermediate_layer)	
+	intermediate_layer = tf.keras.layers.MaxPooling2D(pool_size=(2,2), name='maxpool2d_2')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dropout(0.4, name='dropout_2')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_5')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_5')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_6')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_6')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dropout(0.4, name='dropout_3')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_7')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_7')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_8')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_8')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.MaxPooling2D(pool_size=(2,2), name='maxpool2d_3')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dropout(0.5, name='dropout_4')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Flatten(name='flatten')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dense(128, activation='elu', kernel_initializer='he_normal', name='dense_1')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_9')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Dropout(0.6, name='dropout_5')(intermediate_layer)
+	output_layer = tf.keras.layers.Dense(6, activation='softmax', name='output')(intermediate_layer)
+	
+
+	return tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
 def create_data_iterator(directory):
-	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0).flow_from_directory(directory, target_size=(96, 96), batch_size=32)
+	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True, width_shift_range=[-10,10], height_shift_range=[-10,10]).flow_from_directory(directory, color_mode="grayscale", target_size=(96, 96), batch_size=32)
 
 def get_loss_object():
     return tf.keras.losses.CategoricalCrossentropy()
@@ -58,6 +84,8 @@ def train_model(model, dataset_train, dataset_test, epochs):
 		
 		train_accuracy.reset_states()
 		test_accuracy.reset_states()
+		if epoch % 5 == 0:
+			model.save('saved_model/model')
 
 model = create_model()
 model.summary()
@@ -65,4 +93,4 @@ model.summary()
 dataset_train = create_data_iterator("./data/train")
 dataset_test = create_data_iterator("./data/test")
 
-train_model(model, dataset_train, dataset_test, 50)
+train_model(model, dataset_train, dataset_test, 100)
