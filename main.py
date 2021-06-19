@@ -2,7 +2,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 def create_model():
-	input_layer = tf.keras.layers.Input((96, 96, 1))
+	input_layer = tf.keras.layers.Input((48, 48, 1))
 	intermediate_layer = tf.keras.layers.Conv2D(filters=64, kernel_size=(5,5), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_1')(input_layer)
 	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_1')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.Conv2D(filters=64, kernel_size=(5,5), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_2')(intermediate_layer)
@@ -20,9 +20,9 @@ def create_model():
 	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_6')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_6')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.Dropout(0.4, name='dropout_3')(intermediate_layer)
-	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_7')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_7')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_7')(intermediate_layer)
-	intermediate_layer = tf.keras.layers.Conv2D(filters=256, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_8')(intermediate_layer)
+	intermediate_layer = tf.keras.layers.Conv2D(filters=128, kernel_size=(3,3), activation='elu', padding='same', kernel_initializer='he_normal', name='conv2d_8')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_8')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.MaxPooling2D(pool_size=(2,2), name='maxpool2d_3')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.Dropout(0.5, name='dropout_4')(intermediate_layer)
@@ -36,7 +36,7 @@ def create_model():
 	return tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
 def create_data_iterator(directory):
-	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True, width_shift_range=[-10,10], height_shift_range=[-10,10]).flow_from_directory(directory, color_mode="grayscale", target_size=(96, 96), batch_size=32)
+	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True, width_shift_range=[-5,5], height_shift_range=[-5,5]).flow_from_directory(directory, color_mode="grayscale", target_size=(48, 48), batch_size=32)
 
 def get_loss_object():
     return tf.keras.losses.CategoricalCrossentropy()
