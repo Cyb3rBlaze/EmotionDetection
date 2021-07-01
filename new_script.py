@@ -49,6 +49,7 @@ def load_batch(directory, starting_index, batch_size, dims, num_labels):
 				batch_x[files.index(j[:len(j)-4])] = np.asarray(Image.open(directory + "/" + i + "/" + j).resize(dims))
 				count += 1
 			full_count += 1
+	print(batch_y)
 	return np.array(batch_x), np.array(batch_y)
 
 def train(model, directory, batch_size, dims, num_labels, epochs, data_bound):

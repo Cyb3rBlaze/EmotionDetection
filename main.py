@@ -30,67 +30,35 @@ def create_model():
 	intermediate_layer = tf.keras.layers.Dense(128, activation='elu', kernel_initializer='he_normal', name='dense_1')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.BatchNormalization(name='batchnorm_9')(intermediate_layer)
 	intermediate_layer = tf.keras.layers.Dropout(0.6, name='dropout_5')(intermediate_layer)
-	output_layer = tf.keras.layers.Dense(6, activation='softmax', name='output')(intermediate_layer)
+	output_layer = tf.keras.layers.Dense(7, activation='softmax', name='output')(intermediate_layer)
 	
 
 	return tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
 def create_data_iterator(directory):
-	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True, width_shift_range=[-5,5], height_shift_range=[-5,5]).flow_from_directory(directory, color_mode="grayscale", target_size=(48, 48), batch_size=32)
+	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True).flow_from_directory(directory, classes=['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise'], color_mode="grayscale", target_size=(48, 48), batch_size=32)
 
 def get_loss_object():
     return tf.keras.losses.CategoricalCrossentropy()
 
-def model_loss(model, inputs, outputs):
-	y_ = model(inputs, training=True)
-	loss = get_loss_object()(y_true=outputs, y_pred=y_)
-	
-	return loss
-
 def get_optimizer():
     return tf.keras.optimizers.Adam(learning_rate=0.001)
 
-def compute_model_gradients(model, inputs, outputs):
-	with tf.GradientTape() as tape:
-		loss_value = model_loss(model, inputs, outputs)
-	return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
-def train_model(model, dataset_train, dataset_test, epochs):
-	optimizer = get_optimizer()
-	train_accuracy = tf.keras.metrics.CategoricalAccuracy()
-	test_accuracy = tf.keras.metrics.CategoricalAccuracy()	
-
-	for epoch in range(epochs):
-		print("Epoch: " + str(epoch))
-		epoch_loss_avg = tf.keras.metrics.Mean()
-		count = 0
-		for batch in tqdm(dataset_train):
-			count += 1 
-			loss_value, grads = compute_model_gradients(model, batch[0], batch[1])
-			epoch_loss_avg.update_state(loss_value)
-			train_accuracy.update_state(batch[1], model.predict(batch[0]).reshape((int(batch[1].size/6), 6)))
-			optimizer.apply_gradients(zip(grads, model.trainable_variables))
-			if count % 200 == 0:
-				print("Train Accuracy: " + str(train_accuracy.result().numpy()))
-			if count > len(dataset_train):
-				break
-		count = 0
-		for batch in tqdm(dataset_test):
-			count += 1
-			test_accuracy.update_state(batch[1], model.predict(batch[0]).reshape((int(batch[1].size/6), 6)))
-			if count > len(dataset_test):
-				print("Test Accuracy: " + str(test_accuracy.result().numpy()))
-				break
-		
-		train_accuracy.reset_states()
-		test_accuracy.reset_states()
-		if epoch % 5 == 0:
-			model.save('saved_model/model')
-
 model = create_model()
 model.summary()
+model.compile(optimizer=get_optimizer(), loss=get_loss_object(), metrics=['accuracy'])
 
-dataset_train = create_data_iterator("./data/train")
-dataset_test = create_data_iterator("./data/test")
+dataset_train = create_data_iterator("./fer_data/train_set")
+dataset_test = create_data_iterator("./fer_data/test_set")
 
-train_model(model, dataset_train, dataset_test, 200)
+weight_for_0_angry = (1/3995) * (28709/7.0)
+weight_for_1_disgust = (1/436) * (28709/7.0)
+weight_for_2_fear = (1/4097) * (28709/7.0)
+weight_for_3_happy = (1/7215) * (28709/7.0)
+weight_for_4_neutral = (1/4965) * (28709/7.0)
+weight_for_5_sad = (1/4830) * (28709/7.0)
+weight_for_6_surprise = (1/3171) * (28709/7.0)
+
+class_weight = {0: weight_for_0_angry, 1: weight_for_1_disgust, 2: weight_for_2_fear, 3: weight_for_3_happy, 4: weight_for_4_neutral, 5: weight_for_5_sad, 6: weight_for_6_surprise}
+
+model.fit(dataset_train, validation_data=dataset_test, epochs=100, class_weight=class_weight)
