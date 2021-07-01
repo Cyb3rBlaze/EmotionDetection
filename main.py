@@ -36,13 +36,13 @@ def create_model():
 	return tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
 def create_data_iterator(directory):
-	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, horizontal_flip=True).flow_from_directory(directory, classes=['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise'], color_mode="grayscale", target_size=(48, 48), batch_size=32)
+	return tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, rotation_range=5, width_shift_range=[-5, 5], height_shift_range=[-5, 5], zoom_range=0.05, horizontal_flip=True).flow_from_directory(directory, classes=['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise'], color_mode="grayscale", target_size=(48, 48), batch_size=32)
 
 def get_loss_object():
     return tf.keras.losses.CategoricalCrossentropy()
 
 def get_optimizer():
-    return tf.keras.optimizers.Adam(learning_rate=0.001)
+    return tf.keras.optimizers.Adam(learning_rate=0.0008)
 
 model = create_model()
 model.summary()
@@ -54,11 +54,17 @@ dataset_test = create_data_iterator("./fer_data/test_set")
 weight_for_0_angry = (1/3995) * (28709/7.0)
 weight_for_1_disgust = (1/436) * (28709/7.0)
 weight_for_2_fear = (1/4097) * (28709/7.0)
-weight_for_3_happy = (1/7215) * (28709/7.0)
+weight_for_3_happy = (1/7215) * (28709/7.0) * 1.5
 weight_for_4_neutral = (1/4965) * (28709/7.0)
 weight_for_5_sad = (1/4830) * (28709/7.0)
 weight_for_6_surprise = (1/3171) * (28709/7.0)
 
 class_weight = {0: weight_for_0_angry, 1: weight_for_1_disgust, 2: weight_for_2_fear, 3: weight_for_3_happy, 4: weight_for_4_neutral, 5: weight_for_5_sad, 6: weight_for_6_surprise}
 
-model.fit(dataset_train, validation_data=dataset_test, epochs=100, class_weight=class_weight)
+earlyStopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
+mcp_save = tf.keras.callbacks.ModelCheckpoint('saved_model/model3', save_best_only=True, monitor='val_loss', mode='min')
+reduce_lr_loss = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7, verbose=1, epsilon=1e-4, mode='min')
+
+model.fit(dataset_train, validation_data=dataset_test, epochs=200, callbacks=[earlyStopping, mcp_save, reduce_lr_loss], class_weight=class_weight)
+
+model.save("saved_model/model3_final")
